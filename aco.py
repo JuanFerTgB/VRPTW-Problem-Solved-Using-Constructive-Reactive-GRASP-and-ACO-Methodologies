@@ -249,31 +249,46 @@ def aco_vrptw(nodes, capacity, times, num_ants, num_iterations, alpha, beta, rho
 def save_to_excel(workbook, sheet_name, routes, total_distance, computation_time, times):
     ws = workbook.create_sheet(title=sheet_name)
 
-    # Convertir el tiempo de cómputo a milisegundos
-    computation_time_ms = round(computation_time * 1000, 0)
-
-    # Primera fila con número de vehículos, distancia total y tiempo de cómputo en milisegundos
+    # Primera fila con núme ro de vehículos, distancia total y tiempo de cómputo (convertido a milisegundos)
     num_vehicles = len(routes)
-    ws.append([num_vehicles, round(total_distance, 0), computation_time_ms])
+    computation_time_ms = round(computation_time * 1000, 0)  # Convertir a milisegundos
+    ws.append([num_vehicles, round(total_distance, 3), computation_time_ms])
 
-    for route in routes:
-        route_nodes = [0] 
+    # Filas siguientes con la información de cada vehículo
+    for i, route in enumerate(routes, start=1):
+        route_nodes = [0]  # Iniciar con el depósito
         arrival_times = []
         current_time = 0
         total_load = 0
 
         for j in range(1, len(route)):
+            # Sumar el tiempo de viaje entre los nodos consecutivos
             current_time += times[route[j-1].index][route[j].index]
+
+            # Si el vehículo llega antes de la ventana de tiempo, esperar hasta la hora mínima permitida
             if current_time < route[j].time_window[0]:
-                current_time = route[j].time_window[0]
-            arrival_times.append(round(current_time, 3))  
+                current_time = route[j].time_window[0]  # Ajustar el tiempo de llegada
+
+            # Registrar el tiempo de llegada (redondeado a 3 decimales)
+            arrival_times.append(round(current_time, 3))
+
+            # Sumar la demanda del nodo actual a la carga total del vehículo
             total_load += route[j].demand
+
+            # Agregar el nodo actual a la lista de nodos de la ruta
             route_nodes.append(route[j].index)
 
+            # Sumar el tiempo de servicio en el nodo actual
             current_time += route[j].serv_time
 
-        route_nodes.append(0)  
-        ws.append([len(route_nodes) - 3] + route_nodes + arrival_times + [total_load])
+        # Al final de la ruta, el vehículo vuelve al depósito (nodo 0)
+        route_nodes.append(0)
+
+        # Calcular el número de clientes servidos en esta ruta (excluyendo el depósito)
+        num_customers = len(route_nodes) - 3  # Restar los dos nodos del depósito (inicio y final)
+
+        # Guardar el número de clientes, los nodos de la ruta, tiempos de llegada y la carga total
+        ws.append([num_customers] + route_nodes + arrival_times + [total_load])
 
 def vrptw_solver(directory_path, output_filename):
 
